@@ -3,23 +3,32 @@ from PyQt5 import QtCore
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
-import random, time, sys
-
-from sympy import timed
+import random, sys
 
 class Window(QMainWindow):
     def __init__(self, parent = None):
         super(Window, self).__init__(parent)
-        
+
         #fonts 
         self.font1 = QFont("Aerial", 50)
         self.font2 = QFont("Aerial", 15)
 
-        #time:
-        self.initTimer()
+        #creating the timer and connecting it to the updateTimer method
+        timer = QTimer(self)
+        timer.timeout.connect(self.updateTimer) #calls updateTimer method every second
+        #updates every second
+        timer.start(1000)
 
-        #var to store state of game (in progress or complete)
-        self.complete = False
+        #creating timer label and related variables
+        self.timerRun = False
+        self.time = 0
+        self.time_label = QLabel("Time Elapsed: 0", self)
+        self.time_label.setGeometry(780, -10, 500, 100)
+        self.time_label.setFont(self.font2)
+        self.time_label.setStyleSheet("color: white")
+
+        #var to store state of game (in progress or gameComplete)
+        self.gameComplete = False
         
         #setting some rgb colors to use
         self.COLOR_GREY = "rgb(58, 58, 60)"
@@ -34,19 +43,19 @@ class Window(QMainWindow):
         self.importWords()
         self.initGame()
 
-    def initTimer(self):
-        #time label
-        self.time_label = QLabel("Time Elapsed: 0", self)
-        self.time_label.setGeometry(780, -10, 500, 100)
-        self.time_label.setFont(self.font2)
-        self.time_label.setStyleSheet("color: white")
-
-        #creating a thread to calculate the time
-        self.timeThread = TimeThread(self.time_label)
-        self.timeThread.start()
-        self.timeThread.pause()
-
-        self.justStarted = True
+    def updateTimer(self):
+        
+        #if flag is true
+        if self.timerRun:
+            #increment time
+            self.time += 1
+            #update time label
+            self.time_label.setText("Time Elapsed: " + str(self.time))
+    
+    def resetTimer(self):
+        self.timerRun = False
+        self.time = 0
+        self.time_label.setText("Time Elapsed: 0")
 
     #function imports stores words from .txt files in arrays (dictionary and word_set)
     def importWords(self):
@@ -155,10 +164,8 @@ class Window(QMainWindow):
     #method that gets keyboard presses (automatically called)
     #event.key returns decimal value of keyboard key pressesd
     def keyPressEvent(self, event):
-        
-        #starting the timer only when first key is pressed
-        self.timeThread.resume()
-        self.justStarted = False
+
+        self.timerRun = True
 
         #gets decimal value of key press
         key = event.key()
@@ -185,8 +192,8 @@ class Window(QMainWindow):
     #handles keyboard inputs
     def inputHandler(self, key):
 
-        #if game is complete, use cannot type anything 
-        if(not self.complete):
+        #if game is gameComplete, use cannot type anything 
+        if(not self.gameComplete):
 
             #1D array of the current row of letters (passed into many other funcs as an arg) - used to access letters on currenct row
             letters = self.mainWordDisplay[self.row]
@@ -325,25 +332,21 @@ class Window(QMainWindow):
             word += letter.text()
         
         if word == self.actualWord:
-
-            self.timeThread.pause()
+            #pauses timer
+            self.timerRun = False
 
             #shows player that he got the word right
-            self.showOutputDialog(f"Congrats! You got the word {self.actualWord} in {self.timeThread.getTime()} seconds" , 
-                                                                                                                "You Win!")
-            self.complete = True
-
-
+            self.showOutputDialog(f"Congrats! You got the word {self.actualWord} in {self.time} seconds" ,                                                                                                "You Win!")
+            self.gameComplete = True
 
         #else if player could not get word, he looses
         elif(self.row == 5):
-
-            self.timeThread.pause()
+            #pauses timer
+            self.timerRun = False
 
             self.showOutputDialog("Better luck next time The word was: " + self.actualWord, "Game Over")
-            self.complete = True
-
-            
+            self.gameComplete = True
+          
     #method to display the colors representing right and wrong letters in a row
     def displayOverview(self, letters, colorOverview):
         
@@ -425,13 +428,11 @@ class Window(QMainWindow):
         self.actualWord = random.choice(self.word_set)
         #print(self.actualWord)
 
-        #reset time elapsed
-        self.justStarted = True
-        self.time_label.setText("Time Elapsed: 0")
-        self.timeThread.reset()
+        #reset timer
+        self.resetTimer()
 
-        #game complete is false again
-        self.complete = False
+        #game gameComplete is false again
+        self.gameComplete = False
 
     def saveWordImage(self):
 
@@ -439,40 +440,6 @@ class Window(QMainWindow):
         screen = QApplication.primaryScreen()
         screenshot = screen.grabWindow(self.winId(), 0, 70)
         screenshot.save("img.jpg", "jpg")        
-
-
-#a thread class to calculate the time
-#a thread is a process that runs seperately from the main program
-class TimeThread(QThread):
-    def __init__(self, time_label):
-        super().__init__()
-        #constant label 
-        self.TIME_LABEL = time_label
-
-        self.time_label = time_label
-        self.elapsed_time = 0
-
-    #main run method(automatically called when thread is started)
-    def run(self):
-        while True: 
-            if self.time_label is not None:
-                self.time_label.setText("Time Elapsed: " + str(self.elapsed_time))
-                time.sleep(1)
-                self.elapsed_time += 1
-    
-    #method to reset the time counter
-    def reset(self):
-        self.time_label = None
-        self.elapsed_time = 0
-
-    def pause(self):
-        self.time_label = None
-    
-    def resume(self):
-        self.time_label = self.TIME_LABEL
-
-    def getTime(self):
-        return str(self.elapsed_time)
 
 
 def start():
