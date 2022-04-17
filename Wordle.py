@@ -178,13 +178,13 @@ class Window(QMainWindow):
             keyPressed = "backspace"
         elif key == 16777220:
             keyPressed = "enter"
+        elif(key >= 65 and key <= 90):
+            keyPressed = self.keys[key - 65]
         
         #if key pressed is not between decimal values of a and z
-        elif(key < 65 or key > 90):
+        else:
             keyPressed = ""
 
-        if(key >= 65 and key <= 90):
-            keyPressed = self.keys[key - 65]
 
         #calls method that handles input with key pressed as parameter
         self.inputHandler(keyPressed)
@@ -373,7 +373,6 @@ class Window(QMainWindow):
     #sepearte method to set the appeearance of the letters(color, border etc)
     def setLetterAppearence(self, letter, style):
         letter.setStyleSheet(style)
-        
     
     #method to create QDialoges and output win / loose messages
     def showOutputDialog(self, text, title):
@@ -434,6 +433,7 @@ class Window(QMainWindow):
         #game gameComplete is false again
         self.gameComplete = False
 
+    #not used
     def saveWordImage(self):
 
         return
